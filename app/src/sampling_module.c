@@ -6,6 +6,7 @@
 #include "max30001.h"
 #include "afe4400.h"
 
+#include "ecg_hr_algorithm.h"
 #include "hpi_common_types.h"
 
 // #include "display_screens.h"
@@ -84,9 +85,21 @@ static void sensor_ecg_bioz_decode(uint8_t *buf, uint32_t buf_len)
             ecg_bioz_sensor_sample.bioz_samples[i] = edata->bioz_samples[i];
         }
 
-        ecg_bioz_sensor_sample.hr = edata->hr;
+        uint8_t hr_propio = ecg_hr_update(
+   		 ecg_bioz_sensor_sample.ecg_samples,
+   		 ecg_bioz_sensor_sample.ecg_num_samples
+	);
 
-        if(k_msgq_put(&q_ecg_bioz_sample, &ecg_bioz_sensor_sample, K_MSEC(1))!=0)
+	if (hr_propio >= 40 && hr_propio <= 180)
+	{
+    		ecg_bioz_sensor_sample.hr = hr_propio;
+	}
+	else
+	{
+    		ecg_bioz_sensor_sample.hr = edata->hr;
+	}
+
+        if (k_msgq_put(&q_ecg_bioz_sample, &ecg_bioz_sensor_sample, K_MSEC(1))!=0)
         {
             LOG_ERR("ECG/BioZ sample queue error");
             //k_msgq_purge(&q_ecg_bioz_sample);

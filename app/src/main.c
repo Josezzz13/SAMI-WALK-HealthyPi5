@@ -12,6 +12,9 @@
 #include <zephyr/logging/log_ctrl.h>
 
 #include "fs_module.h"
+#include "bno086_module.h"
+#include "display_module.h"
+#include "pci_module.h"
 
 #include <app_version.h>
 
@@ -23,6 +26,21 @@ LOG_MODULE_REGISTER(healthypi5, LOG_LEVEL);
 int main(void)
 {
 	LOG_INF("HealthyPi 5 started !! FW version: %d.%d.%d", APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_PATCHLEVEL);
+	k_msleep(1000);
+	bno086_test();
+//	bno086_enable_linear_accel();
+//	k_msleep(500);
+	pci_reset();
+	while (1)
+	{
+   		 int vel = bno086_get_vel_z();
+
+   		 hpi_scr_update_spo2(vel);
+   		 pci_update_vel_z(vel);
+
+   		 hpi_scr_update_rr(pci_get_value());
+		 k_msleep(2000);
+	}
 
 	return 0;
 }

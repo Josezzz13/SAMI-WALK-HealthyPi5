@@ -17,7 +17,7 @@
 			compatible = "ilitek,ili9488";
 			reg = <0>;
 			mipi-max-frequency = <48000000>;
-			rotation = <90>;
+			rotation = <270>;
 			width = <480>;
 			height = <320>;
 			pixel-format = <ILI9XXX_PIXEL_FORMAT_RGB888>;
@@ -39,4 +39,14 @@
 &pwm {
 	status = "okay";
 	divider-int-4 = <255>;
+};
+
+&i2c1 {
+    status = "okay";
+
+    bno086: bno086@4b {
+        compatible = "i2c-device";
+        reg = <0x4b>;
+        label = "BNO086";
+    };
 };

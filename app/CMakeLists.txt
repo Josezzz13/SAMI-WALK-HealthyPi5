@@ -17,9 +17,11 @@ endforeach()
 project(app LANGUAGES C)
 
 FILE(GLOB app_sources src/*.c)
+FILE(GLOB sh2_sources src/bno086_sh2/sh2/*.c)
+
 FILE(GLOB display_sources src/display/*.c src/images/*.c src/ui/*.c src/ui/screens/*.c)
 
-target_sources(app PRIVATE ${app_sources} ${display_sources})
+target_sources(app PRIVATE ${app_sources} ${display_sources} ${sh2_sources})
 
 # Add display module only if enabled
 #target_sources_ifdef(CONFIG_HEALTHYPI_DISPLAY_ENABLED app PRIVATE ${display_sources})
@@ -31,3 +33,11 @@ zephyr_include_directories(src)
 zephyr_include_directories(src/display)
 zephyr_include_directories(src/ui)
 zephyr_include_directories(src/bt)
+
+target_include_directories(app PRIVATE
+)
+
+target_include_directories(app PRIVATE
+  /home/ijose/modules/lib/gui/lvgl
+  /home/ijose/modules/lib/gui/lvgl/src
+)

@@ -1,6 +1,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/spi.h>
 #include <zephyr/drivers/dac.h>
+#include <stdio.h>
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/display.h>
@@ -14,6 +15,7 @@
 #include "display_module.h"
 #include "hpi_common_types.h"
 #include "data_module.h"
+#include "pci_module.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(display_module, LOG_LEVEL_DBG);
@@ -215,6 +217,8 @@ static void hpi_disp_update_temp(float temp_f, float temp_c)
 
 void hpi_scr_update_hr(int hr)
 {
+    pci_update_hr(hr);
+
     if (hpi_disp_get_curr_screen() == SCR_HOME)
     {
         hpi_scr_home_update_hr(hr);
@@ -278,25 +282,20 @@ void hpi_scr_update_pr(int pr)
 
 void hpi_scr_update_rr(int rr)
 {
-    if (hpi_disp_get_curr_screen() == SCR_HOME)
-    {
-        hpi_scr_home_update_rr(rr);
-    }
-    else
-    {
-        if (label_rr == NULL)
-            return;
+    char buf[16];
 
-        if (rr < 0)
-        {
-            lv_label_set_text(label_rr, "---");
-            return;
-        }
-
-        char buf[32];
-        sprintf(buf, "%d", rr);
-        lv_label_set_text(label_rr, buf);
+    if (rr < 0)
+    {
+        lv_label_set_text(label_rr, "---");
+        return;
     }
+
+    int entero = rr / 100;
+    int decimal = rr % 100;
+
+    snprintf(buf, sizeof(buf), "%d.%02d", entero, decimal);
+
+    lv_label_set_text(label_rr, buf);
 }
 
 void hpi_disp_change_event(enum hpi_scr_event evt)
@@ -423,8 +422,12 @@ void draw_scr_home_footer(lv_obj_t *parent)
         /*Create a container with ROW flex direction*/
     lv_obj_t *cont_row = lv_obj_create(parent);
     lv_obj_set_size(cont_row, 480, 78);
-    lv_obj_set_pos(cont_row,10,225);
+    lv_obj_set_pos(cont_row,0,225);
     lv_obj_set_flex_flow(cont_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(cont_row,
+                      LV_FLEX_ALIGN_CENTER,
+                      LV_FLEX_ALIGN_CENTER,
+                      LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_bg_color(cont_row, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_pad_all(cont_row, 0, LV_PART_MAIN);
     lv_obj_set_style_border_width(cont_row, 0, LV_PART_MAIN);
@@ -432,27 +435,27 @@ void draw_scr_home_footer(lv_obj_t *parent)
 
     lv_obj_t *obj_hr_card = lv_obj_create(cont_row);
     // lv_obj_add_style(obj_hr_card, &style, 0);
-    lv_obj_set_size(obj_hr_card, 100, LV_PCT(100));
+    lv_obj_set_size(obj_hr_card, 130, LV_PCT(100));
     lv_obj_set_style_bg_color(obj_hr_card, lv_palette_darken(LV_PALETTE_ORANGE, 4), LV_PART_MAIN);
     lv_obj_clear_flag(obj_hr_card, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t *obj_spo2_card = lv_obj_create(cont_row);
     // lv_obj_add_style(obj_hr_card, &style, 0);
-    lv_obj_set_size(obj_spo2_card, 100, LV_PCT(100));
+    lv_obj_set_size(obj_spo2_card, 130, LV_PCT(100));
     lv_obj_set_style_bg_color(obj_spo2_card, lv_palette_darken(LV_PALETTE_BLUE, 4), LV_PART_MAIN);
     lv_obj_clear_flag(obj_spo2_card, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t *obj_rr_card = lv_obj_create(cont_row);
     // lv_obj_add_style(obj_hr_card, &style, 0);
-    lv_obj_set_size(obj_rr_card, 110, LV_PCT(100));
+    lv_obj_set_size(obj_rr_card, 130, LV_PCT(100));
     lv_obj_set_style_bg_color(obj_rr_card, lv_palette_darken(LV_PALETTE_GREEN, 4), LV_PART_MAIN);
     lv_obj_clear_flag(obj_rr_card, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *obj_temp_card = lv_obj_create(cont_row);
+//    lv_obj_t *obj_temp_card = lv_obj_create(cont_row);
     // lv_obj_add_style(obj_hr_card, &style, 0);
-    lv_obj_set_size(obj_temp_card,120, LV_PCT(100));
-    lv_obj_set_style_bg_color(obj_temp_card, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);
-    lv_obj_clear_flag(obj_temp_card, LV_OBJ_FLAG_SCROLLABLE);
+//    lv_obj_set_size(obj_temp_card,120, LV_PCT(100));
+//    lv_obj_set_style_bg_color(obj_temp_card, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);
+//    lv_obj_clear_flag(obj_temp_card, LV_OBJ_FLAG_SCROLLABLE);
 
     // HR Number label
     label_hr = lv_label_create(obj_hr_card);
@@ -487,13 +490,13 @@ void draw_scr_home_footer(lv_obj_t *parent)
 
     // SpO2 Title label
     lv_obj_t *label_spo2_title = lv_label_create(obj_spo2_card);
-    lv_label_set_text(label_spo2_title, "SpO2");
+    lv_label_set_text(label_spo2_title, "Vel. Z");
     lv_obj_align_to(label_spo2_title, label_spo2, LV_ALIGN_TOP_MID, 0, -15);
     lv_obj_add_style(label_spo2_title, &style_sub, LV_STATE_DEFAULT);
 
     // SpO2 % label
     lv_obj_t *label_spo2_sub = lv_label_create(obj_spo2_card);
-    lv_label_set_text(label_spo2_sub, "%");
+    lv_label_set_text(label_spo2_sub, "m/min");
     lv_obj_align_to(label_spo2_sub, label_spo2, LV_ALIGN_BOTTOM_MID, 0, 10);
     lv_obj_add_style(label_spo2_sub, &style_sub, LV_STATE_DEFAULT);
 
@@ -525,43 +528,43 @@ void draw_scr_home_footer(lv_obj_t *parent)
 
     // RR Title label
     lv_obj_t *label_rr_title = lv_label_create(obj_rr_card);
-    lv_label_set_text(label_rr_title, "Resp Rate");
+    lv_label_set_text(label_rr_title, "PCI");
     lv_obj_align_to(label_rr_title, label_rr, LV_ALIGN_TOP_MID, -5, -15);
     lv_obj_add_style(label_rr_title, &style_sub, LV_STATE_DEFAULT);
 
     // RR Sub BPM label
     lv_obj_t *label_rr_sub = lv_label_create(obj_rr_card);
-    lv_label_set_text(label_rr_sub, "bpm");
+    lv_label_set_text(label_rr_sub, "");
     lv_obj_align_to(label_rr_sub, label_rr, LV_ALIGN_BOTTOM_MID, 0, 10);
     lv_obj_add_style(label_rr_sub, &style_sub, LV_STATE_DEFAULT);
 
     // Temp Number label
-    label_temp_f = lv_label_create(obj_temp_card);
-    lv_label_set_text(label_temp_f, "---");
-    lv_obj_center(label_temp_f);
-    lv_obj_add_style(label_temp_f, &style_number_medium, LV_STATE_DEFAULT);
+//    label_temp_f = lv_label_create(obj_temp_card);
+//    lv_label_set_text(label_temp_f, "---");
+//    lv_obj_center(label_temp_f);
+//    lv_obj_add_style(label_temp_f, &style_number_medium, LV_STATE_DEFAULT);
 
-    label_temp_c = lv_label_create(obj_temp_card);
-    lv_label_set_text(label_temp_c, "---");
-    lv_obj_align_to(label_temp_c, label_temp_f, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
-    lv_obj_add_style(label_temp_c, &style_sub, LV_STATE_DEFAULT);
+//    label_temp_c = lv_label_create(obj_temp_card);
+//    lv_label_set_text(label_temp_c, "---");
+//    lv_obj_align_to(label_temp_c, label_temp_f, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
+//    lv_obj_add_style(label_temp_c, &style_sub, LV_STATE_DEFAULT);
 
     // Temp label
-    lv_obj_t *label_temp_title = lv_label_create(obj_temp_card);
-    lv_label_set_text(label_temp_title, "Temp");
-    lv_obj_align_to(label_temp_title, label_temp_f, LV_ALIGN_TOP_MID, 0, -15);
-    lv_obj_add_style(label_temp_title, &style_sub, LV_STATE_DEFAULT);
+//    lv_obj_t *label_temp_title = lv_label_create(obj_temp_card);
+//    lv_label_set_text(label_temp_title, "Temp");
+//    lv_obj_align_to(label_temp_title, label_temp_f, LV_ALIGN_TOP_MID, 0, -15);
+//    lv_obj_add_style(label_temp_title, &style_sub, LV_STATE_DEFAULT);
 
-    lv_obj_t *label_temp_sub = lv_label_create(obj_temp_card);
-    lv_label_set_text(label_temp_sub, "°F");
-    lv_obj_align_to(label_temp_sub, label_temp_f, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
-    lv_obj_add_style(label_temp_sub, &style_sub, LV_STATE_DEFAULT);
+//    lv_obj_t *label_temp_sub = lv_label_create(obj_temp_card);
+//    lv_label_set_text(label_temp_sub, "°F");
+//    lv_obj_align_to(label_temp_sub, label_temp_f, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
+//    lv_obj_add_style(label_temp_sub, &style_sub, LV_STATE_DEFAULT);
 
     // Temp Sub deg C label
-    lv_obj_t *label_temp_sub_c = lv_label_create(obj_temp_card);
-    lv_label_set_text(label_temp_sub_c, "°C");
-    lv_obj_align_to(label_temp_sub_c, label_temp_c, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
-    lv_obj_add_style(label_temp_sub_c, &style_sub, LV_STATE_DEFAULT);
+//    lv_obj_t *label_temp_sub_c = lv_label_create(obj_temp_card);
+//    lv_label_set_text(label_temp_sub_c, "°C");
+//    lv_obj_align_to(label_temp_sub_c, label_temp_c, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
+//    lv_obj_add_style(label_temp_sub_c, &style_sub, LV_STATE_DEFAULT);
 
     lv_obj_t *label_menu = lv_label_create(parent);
     lv_label_set_text(label_menu, "Press side wheel UP/DOWN for other charts");
@@ -581,59 +584,33 @@ void hpi_load_screen(int m_screen, enum scroll_dir m_scroll_dir)
     case SCR_ECG:
         draw_scr_ecg(SCROLL_DOWN);
         break;
-    case SCR_RESP:
-        draw_scr_resp(SCROLL_DOWN);
-        break;
-    case SCR_PPG:
-        draw_scr_ppg(SCROLL_DOWN);
-        break;
-    case SCR_HOME:
-        draw_scr_home(SCROLL_DOWN);
-        break;
+    case SCR_SPLASH:
+	draw_scr_splash(m_scroll_dir);
+	break;
+   // case SCR_RESP:
+     //   draw_scr_resp(SCROLL_DOWN);
+       // break;
+    //case SCR_PPG:
+      //  draw_scr_ppg(SCROLL_DOWN);
+        //break;
+//    case SCR_HOME:
+//        draw_scr_home(SCROLL_DOWN);
+  //      break;
 
     default:
         break;
     }
 }
 
-void disp_screen_event(lv_event_t *e)
+static void disp_screen_event(lv_event_t *e)
 {
-    lv_event_code_t event_code = lv_event_get_code(e);
-
-    if (event_code == LV_EVENT_GESTURE && lv_indev_get_gesture_dir(lv_indev_get_act()) == LV_DIR_LEFT)
+    if (hpi_disp_get_curr_screen() == SCR_SPLASH)
     {
-        lv_indev_wait_release(lv_indev_get_act());
-        printf("Left at %d\n", hpi_disp_get_curr_screen());
-
-        if ((hpi_disp_get_curr_screen() + 1) == SCR_LIST_END)
-        {
-            printk("End of list\n");
-            hpi_load_screen(SCR_LIST_START + 1, SCROLL_LEFT);
-            // return;
-        }
-        else
-        {
-            printk("Loading screen %d\n", hpi_disp_get_curr_screen() + 1);
-            hpi_load_screen(hpi_disp_get_curr_screen() + 1, SCROLL_LEFT);
-        }
+        hpi_load_screen(SCR_ECG, SCROLL_LEFT);
     }
-
-    if (event_code == LV_EVENT_GESTURE && lv_indev_get_gesture_dir(lv_indev_get_act()) == LV_DIR_RIGHT)
+    else
     {
-        lv_indev_wait_release(lv_indev_get_act());
-        printf("Right at %d\n", hpi_disp_get_curr_screen());
-        if ((hpi_disp_get_curr_screen() - 1) == SCR_LIST_START)
-        {
-            printk("Start of list\n");
-            hpi_load_screen(SCR_LIST_END, SCROLL_RIGHT);
-            // return;
-        }
-        else
-        {
-
-            printk("Loading screen %d\n", curr_screen - 1);
-            hpi_load_screen(hpi_disp_get_curr_screen() - 1, SCROLL_RIGHT);
-        }
+        hpi_load_screen(SCR_SPLASH, SCROLL_RIGHT);
     }
 }
 
@@ -728,36 +705,39 @@ void display_screens_thread(void)
     // draw_scr_welcome();
     if (m_op_mode == OP_MODE_BASIC)
     {
-        hpi_load_screen(SCR_HOME, SCROLL_DOWN);
+        hpi_load_screen(SCR_SPLASH, SCROLL_DOWN);
     }
     else
     {
         // hpi_load_screen(SCR_ECG, SCROLL_DOWN);
-        hpi_load_screen(SCR_PPG, SCROLL_DOWN);
+        hpi_load_screen(SCR_SPLASH, SCROLL_DOWN);
     }
 
     while (1)
     {
 
-        if (k_msgq_get(&q_plot_ecg_bioz, &ecg_bioz_sensor_sample, K_NO_WAIT) == 0)
-        {
-            if (hpi_disp_get_curr_screen() == SCR_ECG)
-            {
-                hpi_ecg_disp_draw_plot_ecg(ecg_bioz_sensor_sample.ecg_samples, ecg_bioz_sensor_sample.ecg_num_samples, ecg_bioz_sensor_sample.ecg_lead_off);
-            }
-            else if (hpi_disp_get_curr_screen() == SCR_RESP)
-            {
-                hpi_resp_disp_draw_plot_resp(ecg_bioz_sensor_sample.bioz_samples, ecg_bioz_sensor_sample.bioz_num_samples, ecg_bioz_sensor_sample.bioz_lead_off);
-            }
-        }
+        if (hpi_disp_get_curr_screen() == SCR_SPLASH)
+	{
+   		 k_msleep(50);
+	}
 
-        if (k_msgq_get(&q_plot_ppg, &ppg_sensor_sample, K_NO_WAIT) == 0)
-        {
-            if (hpi_disp_get_curr_screen() == SCR_PPG)
-            {
-                hpi_ppg_disp_draw_plot_ppg(ppg_sensor_sample.ppg_red_sample, ppg_sensor_sample.ppg_ir_sample, ppg_sensor_sample.ppg_lead_off);
-            }
+	if (k_msgq_get(&q_plot_ecg_bioz, &ecg_bioz_sensor_sample, K_NO_WAIT) == 0)
+	{
+   		 if (hpi_disp_get_curr_screen() == SCR_ECG)
+   			 {
+   				   hpi_ecg_disp_draw_plot_ecg(ecg_bioz_sensor_sample.ecg_samples,
+                                   ecg_bioz_sensor_sample.ecg_num_samples,
+                                   ecg_bioz_sensor_sample.ecg_lead_off);
         }
+    }
+
+//        if (k_msgq_get(&q_plot_ppg, &ppg_sensor_sample, K_NO_WAIT) == 0)
+  //      {
+    //        if (hpi_disp_get_curr_screen() == SCR_PPG)
+      //      {
+        //        hpi_ppg_disp_draw_plot_ppg(ppg_sensor_sample.ppg_red_sample, ppg_sensor_sample.ppg_ir_sample, ppg_sensor_sample.ppg_lead_off);
+          //  }
+       // }
 
         if (k_uptime_get_32() - last_batt_refresh > HPI_DISP_BATT_REFR_INT)
         {
@@ -773,19 +753,19 @@ void display_screens_thread(void)
 
         if (k_uptime_get_32() - last_hr_refresh > HPI_DISP_HR_REFR_INT)
         {
-            hpi_scr_update_hr(m_disp_hr);
+           hpi_scr_update_hr(m_disp_hr);
             last_hr_refresh = k_uptime_get_32();
         }
 
         if (k_uptime_get_32() - last_spo2_refresh > HPI_DISP_SPO2_REFR_INT)
         {
-            hpi_scr_update_spo2(m_disp_spo2);
+           // hpi_scr_update_spo2(m_disp_spo2);
             last_spo2_refresh = k_uptime_get_32();
         }
 
         if (k_uptime_get_32() - last_rr_refresh > HPI_DISP_RR_REFR_INT)
         {
-            hpi_scr_update_rr(m_disp_rr);
+           // hpi_scr_update_rr(m_disp_rr);
             last_rr_refresh = k_uptime_get_32();
         }
 

@@ -11,3 +11,11 @@
 /twister-out*
 
 __pycache__/
+
+build/
+*.log
+*.save
+*_backup.txt
+*~
+.vscode/
+__pycache__/

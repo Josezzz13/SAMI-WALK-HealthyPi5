@@ -21,19 +21,19 @@ enum hpi_disp_screens
 {
     SCR_LIST_START,
 
-    //SCR_HOME,
+    SCR_SPLASH,
     SCR_ECG,
     SCR_PPG,
     SCR_RESP,
-
+    SCR_HOME,
     SCR_LIST_END
 };
 
-enum hpi_disp_screens_spl
-{
-    SCR_SPLASH=51,
-    SCR_HOME
-};
+//enum hpi_disp_screens_spl
+//{
+//    SCR_SPLASH=51,
+//    SCR_HOME
+//};
 
 enum hpi_disp_op_mode
 {
@@ -90,3 +90,4 @@ void hpi_scr_update_pr(int pr);
 //void draw_scr_chart_resp(void);
 void draw_header(lv_obj_t *parent, bool showFWVersion);
 void draw_footer(lv_obj_t *parent);
+void draw_scr_splash(enum scroll_dir m_scroll_dir);
